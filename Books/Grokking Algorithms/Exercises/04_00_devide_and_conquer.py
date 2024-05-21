@@ -8,10 +8,9 @@
 
 def calc(a: int, b: int) -> tuple[int, int]:
     min_, max_ = (a, b) if a < b else (b, a)
-    remainder = max_ % min_
-    if remainder == 0:
+    if (remainder := max_ % min_) == 0:
         return min_, min_
-    return calc(max_ % min_, min_)
+    return calc(min_, remainder)
 
 
 if __name__ == "__main__":
