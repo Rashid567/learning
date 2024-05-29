@@ -1,4 +1,4 @@
-from collections import deque
+from collections import deque, defaultdict
 
 GRAPH_1 = {
     "START": ["T1", "B1"],
@@ -33,52 +33,97 @@ GRAPH_3 = {
 GRAPH_3_RES = ["START", "M1", "T1", "END"]
 
 
-def shortest_way(
-        graph: dict[str, list[str]],
-        start_point: str,
-        end_point: str
-) -> list[str] | None:
-    need_to_visit = deque()
-    need_to_visit.append(start_point)
-    costs = {k: 0 if k == start_point else float("inf") for k in graph}
-    visited = set()
+INF = float("inf")
 
-    current_point = start_point
-    while need_to_visit:
-        current_point = need_to_visit.popleft()
-        if current_point == end_point:
-            break
-        if current_point in visited:
+
+def shortest_way_exists(
+        graph: dict[str, list[str]],
+        start: str = "START",
+        end: str = "END"
+) -> bool:
+    """ Алгоритм проверки наличия кратчайшего пути """
+    visited = set()
+    visit_queue = deque([start])
+
+    while visit_queue:
+        node = visit_queue.popleft()
+        if node in visited:
             continue
 
-        visited.add(current_point)
-        for neighbor in graph[current_point]:
-            costs[neighbor] = costs[current_point] + 1
-            need_to_visit.extend(graph[neighbor])
+        visited.add(node)
+        visit_queue.extend(graph[node])
+        for neighbor in graph[node]:
+            if neighbor == end:
+                return True
 
-    if current_point != "END":
+    return False
+
+
+def shortest_way(
+        graph: dict[str, list[str]],
+        start: str = "START",
+        end: str = "END"
+) -> list[str] | None:
+    """ Алгоритм поиска кратчайшего пути """
+    costs = defaultdict(lambda: INF)
+    costs[start] = 0
+    parents: dict[str, str | None] = defaultdict(lambda: None)
+
+    visited = set()
+    visit_queue = deque([start])
+
+    # Поиск кратчайшего пути
+    while visit_queue:
+        node = visit_queue.popleft()
+        if node in visited:
+            continue
+
+        visited.add(node)
+        visit_queue.extend(graph[node])
+        for neighbor in graph[node]:
+            new_cost = costs[node] + 1
+            if new_cost < costs[neighbor]:
+                costs[neighbor] = new_cost
+                parents[neighbor] = node
+
+            # Прерываем, если достигли конца
+            if neighbor == end:
+                break
+        else:
+            continue
+        break
+
+    # Маршрута нет
+    if not parents[end]:
         return None
 
-    res = [current_point]
-    max_cost = max((e for e in costs.values() if e != float("inf")))
+    # Маршрут есть. Восстанавливаем путь
+    path = [end]
+    next_node = parents[end]
+    while next_node:
+        path.append(next_node)
+        next_node = parents[next_node]
 
-    while max_cost >= 0:
-        current_point = next(
-            point for point, neighbors in graph.items()
-            if costs[point] == max_cost and current_point in neighbors
-        )
-        max_cost -= 1
-        res.append(current_point)
-
-    return res[::-1]
+    return path[::-1]
 
 
 if __name__ == "__main__":
-    for graph_, correct_res in (
-            (GRAPH_1, GRAPH_1_RES),
-            (GRAPH_2, GRAPH_2_RES),
-            (GRAPH_3, GRAPH_3_RES)
+    for graph_name, graph_, valid_res in (
+            ("1", GRAPH_1, GRAPH_1_RES),
+            ("2", GRAPH_2, GRAPH_2_RES),
+            ("3", GRAPH_3, GRAPH_3_RES)
     ):
-        calc_res = shortest_way(graph_, "START", "END")
-        print(calc_res)
-        assert calc_res == correct_res
+        calc_res = shortest_way(graph_)
+        print(
+            f"Graph {graph_name}",
+            f"Valid res: {valid_res}",
+            f"Calc. res: {calc_res}",
+            "-" * 50,
+            sep="\n"
+        )
+        assert shortest_way_exists(graph_) is True
+        assert calc_res == valid_res
+
+    wayless_graph = {"START": ["T1"], "T1": [], "END": []}
+    assert shortest_way_exists(wayless_graph) is False
+    assert shortest_way(wayless_graph) is None
